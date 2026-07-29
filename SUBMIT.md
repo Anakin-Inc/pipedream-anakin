@@ -11,42 +11,106 @@ own dashboard (confirmed against their
 
 ```
 components/anakin/
-  anakin.app.mjs                          auth + shared HTTP methods
-  actions/scrape-url/scrape-url.mjs       submit a scrape job, poll to completion
-  actions/ai-search/ai-search.mjs         synchronous AI search
+  anakin.app.mjs                                            auth + shared HTTP methods (one wrapper method per REST endpoint)
+  actions/scrape-url/scrape-url.mjs                         submit a scrape job, poll to completion
+  actions/ai-search/ai-search.mjs                           synchronous AI search
+  actions/map/map.mjs                                       submit a URL-discovery (map) job, poll to completion
+  actions/crawl/crawl.mjs                                   submit a multi-page crawl job, poll to completion
+  actions/agentic-search/agentic-search.mjs                 submit a deep-research job, poll to completion
+  actions/wire-discover/wire-discover.mjs                   resolve a natural-language intent to candidate Wire actions
+  actions/wire-catalog/wire-catalog.mjs                     browse the Wire catalog (all sites, or one site's actions)
+  actions/wire-read-action/wire-read-action.mjs             run a Wire READ action, poll async jobs to completion
+  actions/wire-write-action/wire-write-action.mjs           run a Wire WRITE action, poll async jobs to completion
+  actions/wire-identities/wire-identities.mjs                list saved Wire identities/credentials
+  actions/wire-login/wire-login.mjs                          sign in to a credentials-mode Wire site
+  actions/wire-build/wire-build.mjs                          request a new Wire action for an uncatalogued site
+  actions/monitor-create/monitor-create.mjs                  create a scheduled website monitor
+  actions/monitor-list/monitor-list.mjs                       list monitors, or fetch one by id
+  actions/monitor-changes/monitor-changes.mjs                 list a monitor's detected changes
+  actions/monitor-control/monitor-control.mjs                 pause / resume / run_now / delete a monitor
+  actions/ai-visibility-search/ai-visibility-search.mjs      fan a query out to AI answer engines, poll to completion
+  actions/ai-visibility-sources/ai-visibility-sources.mjs    list available AI answer engines
+  actions/session-list/session-list.mjs                       list saved browser sessions
+  actions/session-delete/session-delete.mjs                   delete a saved browser session
+  actions/browser-task/browser-task.mjs                       run a natural-language AI browser task, poll to completion
 ```
 
-Mirrors two of the four actions already live in the Zapier app (per
-`../zapier-integration/WEBHOOK_TO_SCRAPER_GUIDE.md` and the public docs) —
-Extract Website Data and Perform AI Search. Agentic Search (start + poll,
-async) and the Wire read/write action family aren't included here; they'd
-follow the same pattern (see `scrape-url.mjs`'s submit-then-poll shape) as a
-natural follow-on, kept out of today's scope to ship the first two
-correctly rather than four thinly. When building it, use
-`docs/SDK_API_CONTRACT.md` (see below) for the request shape — the public
-agentic-search docs page omits `useBrowser` (default `true`) and `schema`,
-both of which are real, active parameters.
+**21 of 21** capabilities covered — every tool the internal `anakin-mcp`
+server exposes (`anakin-mcp/src/tools/*.ts`, 21 tools across 10 files) now
+has a matching Pipedream action, built directly off `anakin-mcp/src/client.ts`
+(the source-of-truth HTTP client) rather than the public docs alone — see
+"Endpoints used" below for where the two disagreed. The first two actions
+(scrape-url, ai-search) previously shipped alone; this pass added the
+remaining 19, including `agentic-search`, which an earlier note in this file
+had flagged as deliberately out of scope for a follow-on.
 
-## Endpoints used (verified against current docs + the internal SDK contract, 2026-07-27)
+Each new action follows `scrape-url.mjs`'s pattern exactly: `anakin.app.mjs`
+holds one thin HTTP wrapper method per endpoint (submit/get pairs for async
+jobs), and the action file owns orchestration — prop validation, the
+submit-then-poll loop, `maxWaitTime`/`pollInterval` props, and the
+`$.export("$summary", …)` call. No shared job-polling helper was introduced;
+duplicating a ~15-line loop across action files keeps each one independently
+readable and copy-pasteable, matching how Pipedream's own component library
+is written.
 
-- `POST https://api.anakin.io/v1/url-scraper` → `{jobId, status}` — body:
-  `{url, generateJson, country, useBrowser, forceFresh}`
-- `GET https://api.anakin.io/v1/url-scraper/{jobId}` → job status + results
-- `POST https://api.anakin.io/v1/search` → synchronous results — body:
-  `{prompt, limit}`
+Two deliberate deviations from `anakin-mcp`, called out here rather than
+silently baked in:
 
-**Cross-check your source before trusting a single docs page**: the public
-`webapp/content/docs/api-reference/url-scraper/submit-scrape-job.mdx` page
-doesn't list `forceFresh` as a request field at all, even though it's a
-real, working parameter — confirmed by reading `anakin-py`'s actual client
-implementation and `blueprint-scribe-35/docs/SDK_API_CONTRACT.md`, the
-internal source of truth both official SDKs implement against. The public
-docs pages are good for response shapes but were missing at least one real
-request parameter here — worth checking the contract doc directly for any
-future Anakin integration work rather than the public docs alone.
+- **No financial-transaction guard.** `anakin-mcp`'s `wire_write_action` /
+  `browser_task` / `wire_build` refuse anything that looks like a payment or
+  fund transfer (`src/tools/policy.ts`) — that's a defense-in-depth
+  requirement specific to Anthropic's Connectors Directory review, not a
+  constraint of the Anakin API itself. Pipedream has no equivalent
+  requirement and workflow builders may have legitimate checkout automations,
+  so `wire-write-action.mjs` and `browser-task.mjs` do not reproduce it.
+- **Secret redaction is kept.** `anakin-mcp`'s monitor tools strip
+  `alertWebhookSecret` (an HMAC signing secret) from every response before it
+  reaches the model (`src/tools/monitor.ts`). That's a genuine security
+  property, not a Directory-specific one — a webhook secret shouldn't land in
+  a workflow's step output/logs — so `monitor-create.mjs`, `monitor-list.mjs`,
+  `monitor-changes.mjs`, and `monitor-control.mjs` all redact it the same way.
+
+## Endpoints used (verified against `anakin-mcp/src/client.ts` + current docs, 2026-07-29)
+
+- `POST /url-scraper` → `{jobId, status}`, `GET /url-scraper/{jobId}` — scrape-url
+- `POST /search` (synchronous) — ai-search
+- `POST /map` → `{jobId}`, `GET /map/{jobId}` — map
+- `POST /crawl` → `{jobId}`, `GET /crawl/{jobId}` — crawl
+- `POST /agentic-search` → `{jobId}`, `GET /agentic-search/{jobId}` — agentic-search
+- `GET /wire/resolve?q=&limit=` — wire-discover
+- `GET /wire/catalog` or `GET /wire/catalog/{slug}` — wire-catalog
+- `POST /wire/task` → inline result or `{job_id}`; `GET /wire/jobs/{jobId}` — wire-read-action, wire-write-action
+- `GET /wire/identities?catalog_id=` — wire-identities
+- `POST /wire/login` — wire-login
+- `POST /wire/build-request` — wire-build
+- `POST /monitors`; `GET /monitors`; `GET /monitors/{id}`; `GET /monitors/{id}/changes`;
+  `POST /monitors/{id}/pause|resume|run`; `DELETE /monitors/{id}` — monitor-create/list/changes/control
+- `POST /ai-visibility/search` → `{search_id, status}`, `GET /ai-visibility/search/{id}` — ai-visibility-search
+- `GET /ai-visibility/sources` — ai-visibility-sources
+- `GET /sessions?domain=` — session-list
+- `DELETE /sessions/{id}` — session-delete
+- `POST /ai/evaluate` (`async: true`) → `{workflow_id, status}`, `GET /ai/jobs/{id}` — browser-task
+
+All under `https://api.anakin.io/v1`, all confirmed request/response shapes
+against `anakin-mcp/src/client.ts` (the internal SDK-parity contract) — the
+same source `scrape-url.mjs`/`ai-search.mjs` used, extended here to the
+remaining 8 tool families (map, crawl, agentic search, Wire, monitoring, AI
+visibility, sessions, browser automation). Two spots where the internal
+client is more complete than the public docs page:
+
+- `agentic-search`'s public docs page doesn't mention `useBrowser` (default
+  `true`) or `schema`; both are real, active request fields per
+  `client.ts`'s `AgenticSearchOptions`.
+- `POST /ai/evaluate` (browser-task) has no dedicated `api-reference` docs
+  page at all — it's only referenced in the rate-limits page and the Claude
+  connector integration guide. Confirmed live and load-bearing via
+  `anakin-mcp/src/tools/browser-task.ts` and `client.ts`'s `browserTask()`,
+  which is why the doc link on that action points at the integration guide
+  instead of a `docs/api-reference/...` page.
 
 Auth: `X-API-Key` header (confirmed accepted per the Go API's auth
-middleware, which takes several header variants).
+middleware, which takes several header variants) — unchanged from the
+original two actions, reused by every new one via `anakin.app.mjs`.
 
 ## Steps (needs the account owner)
 
@@ -59,12 +123,22 @@ middleware, which takes several header variants).
    your own account to test end-to-end against a real Anakin API key before
    opening a PR — `pd dev` (live-reload) only supports sources, not
    actions, per a currently open Pipedream issue, so iterate via
-   publish-and-test rather than expecting hot reload.
+   publish-and-test rather than expecting hot reload. Prioritize testing the
+   write-capable / credit-spending actions (wire-write-action, wire-build,
+   monitor-create, browser-task) since those have side effects on a real
+   account.
 3. Fork `PipedreamHQ/pipedream`, copy `components/anakin/` into the fork at
-   the same path, open a PR per `CONTRIBUTING.md`.
+   the same path, open a PR per `CONTRIBUTING.md`. Given the size (21
+   actions), consider whether Pipedream's reviewers prefer one PR or a
+   handful split by tool family (scrape/map/crawl/search, Wire, monitoring,
+   AI visibility + sessions + browser) — check `CONTRIBUTING.md` / recent
+   merged PRs for their current preference before opening.
 
 ## Not done
 
 Requires the account owner's Pipedream identity to register the app and run
 `pd publish` against a live key — nobody has tested these against the real
 API yet, so treat as reviewed-but-unexecuted rather than verified working.
+Verification performed here was static only: `node --check` on every `.mjs`
+file (passes) and a manual trace of each action's request/response shape
+against `anakin-mcp/src/client.ts`.
