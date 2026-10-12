@@ -24,6 +24,7 @@ components/anakin/
   actions/wire-identities/wire-identities.mjs                list saved Wire identities/credentials
   actions/wire-login/wire-login.mjs                          sign in to a credentials-mode Wire site
   actions/wire-build/wire-build.mjs                          request a new Wire action for an uncatalogued site
+  actions/wire-build-status/wire-build-status.mjs            check a Wire build (or list recent builds)
   actions/monitor-create/monitor-create.mjs                  create a scheduled website monitor
   actions/monitor-list/monitor-list.mjs                       list monitors, or fetch one by id
   actions/monitor-changes/monitor-changes.mjs                 list a monitor's detected changes
@@ -35,8 +36,8 @@ components/anakin/
   actions/browser-task/browser-task.mjs                       run a natural-language AI browser task, poll to completion
 ```
 
-**21 of 21** capabilities covered — every tool the internal `anakin-mcp`
-server exposes (`anakin-mcp/src/tools/*.ts`, 21 tools across 10 files) now
+**22 of 22** capabilities covered — every tool the internal `anakin-mcp`
+server exposes (`anakin-mcp/src/tools/*.ts`, 22 tools across 10 files) now
 has a matching Pipedream action, built directly off `anakin-mcp/src/client.ts`
 (the source-of-truth HTTP client) rather than the public docs alone — see
 "Endpoints used" below for where the two disagreed. The first two actions
@@ -83,6 +84,7 @@ silently baked in:
 - `GET /wire/identities?catalog_id=` — wire-identities
 - `POST /wire/login` — wire-login
 - `POST /wire/build-request` — wire-build
+- `GET /wire/build-requests/{id}`, `GET /wire/build-requests?status=&limit=&page=` — wire-build-status
 - `POST /monitors`; `GET /monitors`; `GET /monitors/{id}`; `GET /monitors/{id}/changes`;
   `POST /monitors/{id}/pause|resume|run`; `DELETE /monitors/{id}` — monitor-create/list/changes/control
 - `POST /ai-visibility/search` → `{search_id, status}`, `GET /ai-visibility/search/{id}` — ai-visibility-search
@@ -112,33 +114,52 @@ Auth: `X-API-Key` header (confirmed accepted per the Go API's auth
 middleware, which takes several header variants) — unchanged from the
 original two actions, reused by every new one via `anakin.app.mjs`.
 
-## Steps (needs the account owner)
+## Pipedream conventions applied (Oct 2026)
 
-1. **Register the app** in the Pipedream dashboard (Settings → create app,
-   or via the `pd` CLI) — this is where the OAuth-vs-API-key auth field
-   itself gets declared server-side; `anakin.app.mjs` assumes an `api_key`
-   auth field named exactly that (`this.$auth.api_key`), so whatever gets
-   configured in the dashboard must match.
-2. Install the `pd` CLI, `pd login`, then `pd publish` each component to
-   your own account to test end-to-end against a real Anakin API key before
-   opening a PR — `pd dev` (live-reload) only supports sources, not
-   actions, per a currently open Pipedream issue, so iterate via
-   publish-and-test rather than expecting hot reload. Prioritize testing the
-   write-capable / credit-spending actions (wire-write-action, wire-build,
-   monitor-create, browser-task) since those have side effects on a real
-   account.
-3. Fork `PipedreamHQ/pipedream`, copy `components/anakin/` into the fork at
-   the same path, open a PR per `CONTRIBUTING.md`. Given the size (21
-   actions), consider whether Pipedream's reviewers prefer one PR or a
-   handful split by tool family (scrape/map/crawl/search, Wire, monitoring,
-   AI visibility + sessions + browser) — check `CONTRIBUTING.md` / recent
-   merged PRs for their current preference before opening.
+- Every action declares `annotations` (`readOnlyHint`, `destructiveHint`,
+  `openWorldHint`), taken from `anakin-mcp` with one change: create-type
+  actions (monitor-create, wire-build, wire-login) are `destructiveHint: false`.
+  MCP marks them destructive only to force an approval prompt in Claude.
+- `package.json` publishes `@pipedream/anakin` with `@pipedream/platform`.
+- `wire-build`'s login is split into Pipedream props, with the password as
+  `secret: true`; incomplete logins throw `ConfigurationError` before any
+  request, and never echo the password.
+- Async actions poll inside the step (as `scrapegraphai` does). Their
+  `maxWaitTime` descriptions warn that Pipedream's workflow timeout (30s by
+  default for HTTP triggers, max 300s free / 750s paid) stops the step first.
+- Do not add `ai: "optimized"`; Pipedream's team sets it.
+
+### Verified locally against the monorepo's own CI checks
+
+In a sparse checkout of `PipedreamHQ/pipedream` with root dev dependencies:
+
+```
+eslint components/anakin/**            # clean (was 216 errors before --fix)
+node scripts/findBadKeys.js ...        # pass (fails on a planted bad key)
+node scripts/checkComponentAppProp.js  # pass
+node scripts/findDuplicateKeys.js      # pass
+```
+
+Plus a mocked harness over wire-build and wire-build-status.
+
+## Submission process
+
+Pipedream creates the app record (auth config) itself; a vendor cannot.
+
+1. **Request the app** with the
+   [App / Integration Request](https://github.com/PipedreamHQ/pipedream/issues/new?template=app---service-integration.md)
+   form, **in the web UI**. An issue filed through the API loses the
+   template's `app` label and is ignored (two vendors had to refile). Ask for
+   slug `anakin` and a custom-auth field named exactly `api_key`, sent as the
+   `X-API-Key` header. Turnaround has been a few days to three weeks.
+2. Once staff reply that the app is provisioned, open the components PR from
+   the `Anakin-Inc/pipedream` fork with `components/anakin/` at the same path.
+   Send them a logo (SVG plus a 512px PNG) when they ask.
+3. Pipedream QA runs evals against the components, then merges. A merged PR
+   publishes automatically to pipedream.com/apps/anakin.
 
 ## Not done
 
-Requires the account owner's Pipedream identity to register the app and run
-`pd publish` against a live key — nobody has tested these against the real
-API yet, so treat as reviewed-but-unexecuted rather than verified working.
-Verification performed here was static only: `node --check` on every `.mjs`
-file (passes) and a manual trace of each action's request/response shape
-against `anakin-mcp/src/client.ts`.
+Nobody has run these against the live API from a Pipedream workspace.
+Pipedream's QA does that during review; doing it first (`pd publish` to our
+own account with a real key) would catch problems earlier.

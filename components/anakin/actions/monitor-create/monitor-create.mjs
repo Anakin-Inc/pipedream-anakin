@@ -1,6 +1,8 @@
 import anakin from "../../anakin.app.mjs";
 
-const SECRET_KEYS = new Set(["alertWebhookSecret"]);
+const SECRET_KEYS = new Set([
+  "alertWebhookSecret",
+]);
 const REDACTED = "[redacted — view in the Anakin dashboard]";
 
 /** Deep-copy `value` with any secret-bearing keys replaced so they never land in step output. */
@@ -8,8 +10,13 @@ function redactSecrets(value) {
   if (Array.isArray(value)) return value.map(redactSecrets);
   if (value !== null && typeof value === "object") {
     const out = {};
-    for (const [k, v] of Object.entries(value)) {
-      out[k] = SECRET_KEYS.has(k) && v ? REDACTED : redactSecrets(v);
+    for (const [
+      k,
+      v,
+    ] of Object.entries(value)) {
+      out[k] = SECRET_KEYS.has(k) && v
+        ? REDACTED
+        : redactSecrets(v);
     }
     return out;
   }
@@ -22,6 +29,11 @@ export default {
   description: "Creates a scheduled website monitor that checks a URL every `intervalMinutes` (min 15) and records a change when the content differs — optionally alerting a webhook or email. Scope `page` (default) watches one URL; `site` crawls the site each run and tracks pages added/removed/changed; `wire` runs a Wire action each check and diffs its JSON. Watch mode `full_page` compares the whole page; `specific_data` extracts only the fields in Output Schema with AI — ideal for price/stock/status tracking. [See the docs](https://anakin.io/docs/api-reference/monitoring/create-monitor).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: false,
+    openWorldHint: true,
+    readOnlyHint: false,
+  },
   props: {
     anakin,
     url: {
@@ -39,7 +51,11 @@ export default {
       label: "Scope",
       description: "What to monitor: one page, a whole site, or a Wire action.",
       optional: true,
-      options: ["page", "site", "wire"],
+      options: [
+        "page",
+        "site",
+        "wire",
+      ],
       default: "page",
     },
     watchMode: {
@@ -47,7 +63,10 @@ export default {
       label: "Watch Mode",
       description: "Compare the whole page, or only the fields in Output Schema (extracted with AI).",
       optional: true,
-      options: ["full_page", "specific_data"],
+      options: [
+        "full_page",
+        "specific_data",
+      ],
       default: "full_page",
     },
     watchFormat: {
@@ -55,7 +74,11 @@ export default {
       label: "Watch Format",
       description: "Format compared in full_page mode.",
       optional: true,
-      options: ["markdown", "html", "cleaned_html"],
+      options: [
+        "markdown",
+        "html",
+        "cleaned_html",
+      ],
       default: "markdown",
     },
     outputSchema: {
@@ -210,7 +233,10 @@ export default {
       if (this[key] !== undefined) body[key] = this[key];
     }
 
-    const monitor = await this.anakin.createMonitor({ $, ...body });
+    const monitor = await this.anakin.createMonitor({
+      $,
+      ...body,
+    });
 
     $.export("$summary", `Created a website monitor for ${this.url} (every ${this.intervalMinutes}m)`);
     return redactSecrets(monitor);

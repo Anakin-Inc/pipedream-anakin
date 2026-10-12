@@ -6,6 +6,11 @@ export default {
   description: "Runs a natural-language task in a real cloud browser driven by an AI agent: it navigates, clicks, types, scrolls, and extracts on your behalf (\"find the cheapest 65-inch TV on this site and list its specs\", \"fill the contact form with …\"). Use when scraping alone can't do the job (multi-step flows, interactions, complex navigation) and no Wire action covers the site. For login-protected tasks pass Session ID from List Browser Sessions — never put passwords in the prompt. Supply Output Schema to get structured JSON back. Submitted asynchronously and polled to completion (the server hard-caps a run at ~330s). [See the docs](https://anakin.io/docs/integrations/ai-agents/claude-connector).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: true,
+    openWorldHint: true,
+    readOnlyHint: false,
+  },
   props: {
     anakin,
     prompt: {
@@ -46,7 +51,7 @@ export default {
     maxWaitTime: {
       type: "integer",
       label: "Max Wait Time (seconds)",
-      description: "Maximum time to wait for the task to complete before failing the step. Keep above ~330s — the longest legitimate run.",
+      description: "Maximum time to wait for the task to complete before failing the step. Keep above ~330s — the longest legitimate run. Pipedream stops a workflow at its own timeout first (30s by default for HTTP triggers), so raise the workflow's **Timeout** in Settings for long jobs.",
       optional: true,
       default: 360,
     },
@@ -71,7 +76,10 @@ export default {
       body.output_schema = this.outputSchema;
     }
 
-    const accepted = await this.anakin.submitBrowserTask({ $, ...body });
+    const accepted = await this.anakin.submitBrowserTask({
+      $,
+      ...body,
+    });
 
     if (!accepted.workflow_id) {
       // Answered synchronously (shouldn't normally happen with async: true).
@@ -82,7 +90,10 @@ export default {
     const deadline = Date.now() + this.maxWaitTime * 1000;
     let job;
     do {
-      job = await this.anakin.getBrowserTaskJob({ $, jobId: accepted.workflow_id });
+      job = await this.anakin.getBrowserTaskJob({
+        $,
+        jobId: accepted.workflow_id,
+      });
       if (job.status === "completed" || job.status === "failed" || job.status === "timed_out") break;
       if (Date.now() >= deadline) {
         throw new Error(

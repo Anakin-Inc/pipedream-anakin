@@ -14,14 +14,18 @@ export default {
         "Content-Type": "application/json",
       };
     },
-    async _request({ $ = this, path, ...opts }) {
+    async _request({
+      $ = this, path, ...opts
+    }) {
       return axios($, {
         url: `${this._baseUrl()}${path}`,
         headers: this._headers(),
         ...opts,
       });
     },
-    async submitScrape({ $, ...body }) {
+    async submitScrape({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -29,14 +33,18 @@ export default {
         data: body,
       });
     },
-    async getScrapeJob({ $, jobId }) {
+    async getScrapeJob({
+      $, jobId,
+    }) {
       return this._request({
         $,
         method: "GET",
         path: `/url-scraper/${jobId}`,
       });
     },
-    async search({ $, ...body }) {
+    async search({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -45,7 +53,9 @@ export default {
       });
     },
     // ── Map ────────────────────────────────────────────────────────────
-    async submitMap({ $, ...body }) {
+    async submitMap({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -53,7 +63,9 @@ export default {
         data: body,
       });
     },
-    async getMapJob({ $, jobId }) {
+    async getMapJob({
+      $, jobId,
+    }) {
       return this._request({
         $,
         method: "GET",
@@ -61,7 +73,9 @@ export default {
       });
     },
     // ── Crawl ──────────────────────────────────────────────────────────
-    async submitCrawl({ $, ...body }) {
+    async submitCrawl({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -69,7 +83,9 @@ export default {
         data: body,
       });
     },
-    async getCrawlJob({ $, jobId }) {
+    async getCrawlJob({
+      $, jobId,
+    }) {
       return this._request({
         $,
         method: "GET",
@@ -77,7 +93,9 @@ export default {
       });
     },
     // ── Agentic Search ────────────────────────────────────────────────
-    async submitAgenticSearch({ $, ...body }) {
+    async submitAgenticSearch({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -85,7 +103,9 @@ export default {
         data: body,
       });
     },
-    async getAgenticSearchJob({ $, jobId }) {
+    async getAgenticSearchJob({
+      $, jobId,
+    }) {
       return this._request({
         $,
         method: "GET",
@@ -93,23 +113,34 @@ export default {
       });
     },
     // ── Wire: discovery ───────────────────────────────────────────────
-    async wireDiscover({ $, q, limit }) {
+    async wireDiscover({
+      $, q, limit,
+    }) {
       return this._request({
         $,
         method: "GET",
         path: "/wire/resolve",
-        params: { q, limit },
+        params: {
+          q,
+          limit,
+        },
       });
     },
-    async wireCatalog({ $, slug }) {
+    async wireCatalog({
+      $, slug,
+    }) {
       return this._request({
         $,
         method: "GET",
-        path: slug ? `/wire/catalog/${slug}` : "/wire/catalog",
+        path: slug
+          ? `/wire/catalog/${slug}`
+          : "/wire/catalog",
       });
     },
     // ── Wire: execution ───────────────────────────────────────────────
-    async submitWireTask({ $, ...body }) {
+    async submitWireTask({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -117,7 +148,9 @@ export default {
         data: body,
       });
     },
-    async getWireJob({ $, jobId }) {
+    async getWireJob({
+      $, jobId,
+    }) {
       return this._request({
         $,
         method: "GET",
@@ -125,15 +158,21 @@ export default {
       });
     },
     // ── Wire: identities & credentials ───────────────────────────────
-    async wireIdentities({ $, catalogId }) {
+    async wireIdentities({
+      $, catalogId,
+    }) {
       return this._request({
         $,
         method: "GET",
         path: "/wire/identities",
-        params: { catalog_id: catalogId },
+        params: {
+          catalog_id: catalogId,
+        },
       });
     },
-    async wireLogin({ $, ...body }) {
+    async wireLogin({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -142,7 +181,9 @@ export default {
       });
     },
     // ── Wire: build ───────────────────────────────────────────────────
-    async wireBuild({ $, ...body }) {
+    async wireBuild({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -150,8 +191,29 @@ export default {
         data: body,
       });
     },
+    async getWireBuild({
+      $, id,
+    }) {
+      return this._request({
+        $,
+        method: "GET",
+        path: `/wire/build-requests/${encodeURIComponent(id)}`,
+      });
+    },
+    async listWireBuilds({
+      $, params,
+    }) {
+      return this._request({
+        $,
+        method: "GET",
+        path: "/wire/build-requests",
+        params,
+      });
+    },
     // ── Website Monitoring ────────────────────────────────────────────
-    async createMonitor({ $, ...body }) {
+    async createMonitor({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -166,21 +228,27 @@ export default {
         path: "/monitors",
       });
     },
-    async getMonitor({ $, id }) {
+    async getMonitor({
+      $, id,
+    }) {
       return this._request({
         $,
         method: "GET",
         path: `/monitors/${id}`,
       });
     },
-    async getMonitorChanges({ $, id }) {
+    async getMonitorChanges({
+      $, id,
+    }) {
       return this._request({
         $,
         method: "GET",
         path: `/monitors/${id}/changes`,
       });
     },
-    async controlMonitor({ $, id, action }) {
+    async controlMonitor({
+      $, id, action,
+    }) {
       if (action === "delete") {
         return this._request({
           $,
@@ -188,7 +256,9 @@ export default {
           path: `/monitors/${id}`,
         });
       }
-      const endpoint = action === "run_now" ? "run" : action;
+      const endpoint = action === "run_now"
+        ? "run"
+        : action;
       return this._request({
         $,
         method: "POST",
@@ -196,7 +266,9 @@ export default {
       });
     },
     // ── AI Visibility ─────────────────────────────────────────────────
-    async submitAiVisibilitySearch({ $, ...body }) {
+    async submitAiVisibilitySearch({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -204,7 +276,9 @@ export default {
         data: body,
       });
     },
-    async getAiVisibilitySearch({ $, searchId }) {
+    async getAiVisibilitySearch({
+      $, searchId,
+    }) {
       return this._request({
         $,
         method: "GET",
@@ -219,15 +293,21 @@ export default {
       });
     },
     // ── Browser sessions ──────────────────────────────────────────────
-    async listSessions({ $, domain }) {
+    async listSessions({
+      $, domain,
+    }) {
       return this._request({
         $,
         method: "GET",
         path: "/sessions",
-        params: { domain },
+        params: {
+          domain,
+        },
       });
     },
-    async deleteSession({ $, id }) {
+    async deleteSession({
+      $, id,
+    }) {
       return this._request({
         $,
         method: "DELETE",
@@ -235,7 +315,9 @@ export default {
       });
     },
     // ── AI browser automation ────────────────────────────────────────
-    async submitBrowserTask({ $, ...body }) {
+    async submitBrowserTask({
+      $, ...body
+    }) {
       return this._request({
         $,
         method: "POST",
@@ -243,7 +325,9 @@ export default {
         data: body,
       });
     },
-    async getBrowserTaskJob({ $, jobId }) {
+    async getBrowserTaskJob({
+      $, jobId,
+    }) {
       return this._request({
         $,
         method: "GET",

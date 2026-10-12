@@ -6,6 +6,11 @@ export default {
   description: "AI-powered web search returning an AI-generated summary alongside structured results with citations, snippets, and relevance scores. Synchronous — no polling. [See the docs](https://anakin.io/docs/api-reference/search/search).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: false,
+    openWorldHint: true,
+    readOnlyHint: true,
+  },
   props: {
     anakin,
     prompt: {

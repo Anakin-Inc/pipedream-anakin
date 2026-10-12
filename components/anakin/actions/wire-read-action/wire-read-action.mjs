@@ -6,6 +6,11 @@ export default {
   description: "Runs a Wire READ action — one whose type is `read` (it extracts data and does not change state on the target site): search listings, fetch a category's products, get a product's price/specs/reviews, read a profile, pull dashboard metrics. Discover `action_id`s first with the Discover Wire Actions or Browse Wire Catalog step and confirm the action's type is `read`. Most read actions need no auth; if the action's auth mode is `required`, pass a `credentialId` from Wire identities. Submits a task and — for async actions — polls the job until complete. [See the docs](https://anakin.io/docs/api-reference/wire/execute-task).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: false,
+    openWorldHint: true,
+    readOnlyHint: true,
+  },
   props: {
     anakin,
     actionId: {
@@ -34,7 +39,7 @@ export default {
     maxWaitTime: {
       type: "integer",
       label: "Max Wait Time (seconds)",
-      description: "Maximum time to wait for an async job to complete before failing the step.",
+      description: "Maximum time to wait for an async job to complete before failing the step. Pipedream stops a workflow at its own timeout first (30s by default for HTTP triggers), so raise the workflow's **Timeout** in Settings for long jobs.",
       optional: true,
       default: 300,
     },
@@ -47,12 +52,17 @@ export default {
     },
   },
   async run({ $ }) {
-    const body = { action_id: this.actionId };
+    const body = {
+      action_id: this.actionId,
+    };
     if (this.params && Object.keys(this.params).length > 0) body.params = this.params;
     if (this.credentialId) body.credential_id = this.credentialId;
     if (this.identityId) body.identity_id = this.identityId;
 
-    const accepted = await this.anakin.submitWireTask({ $, ...body });
+    const accepted = await this.anakin.submitWireTask({
+      $,
+      ...body,
+    });
 
     if (!accepted.job_id) {
       // Synchronous action — terminal data was already returned inline.
@@ -63,7 +73,10 @@ export default {
     const deadline = Date.now() + this.maxWaitTime * 1000;
     let job;
     do {
-      job = await this.anakin.getWireJob({ $, jobId: accepted.job_id });
+      job = await this.anakin.getWireJob({
+        $,
+        jobId: accepted.job_id,
+      });
       if (job.status === "completed" || job.status === "failed") break;
       if (Date.now() >= deadline) {
         throw new Error(

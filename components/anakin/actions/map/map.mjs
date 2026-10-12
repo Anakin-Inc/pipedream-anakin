@@ -6,6 +6,11 @@ export default {
   description: "Discovers all reachable URLs under a given site — useful for understanding a domain's structure before crawling, or finding the sub-pages to scrape. Submits a map job and polls until complete. [See the docs](https://anakin.io/docs/api-reference/map/submit-map-job).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: false,
+    openWorldHint: true,
+    readOnlyHint: true,
+  },
   props: {
     anakin,
     url: {
@@ -64,7 +69,7 @@ export default {
     maxWaitTime: {
       type: "integer",
       label: "Max Wait Time (seconds)",
-      description: "Maximum time to wait for the job to complete before failing the step.",
+      description: "Maximum time to wait for the job to complete before failing the step. Pipedream stops a workflow at its own timeout first (30s by default for HTTP triggers), so raise the workflow's **Timeout** in Settings for long jobs.",
       optional: true,
       default: 300,
     },
@@ -92,7 +97,10 @@ export default {
     const deadline = Date.now() + this.maxWaitTime * 1000;
     let job;
     do {
-      job = await this.anakin.getMapJob({ $, jobId });
+      job = await this.anakin.getMapJob({
+        $,
+        jobId,
+      });
       if (job.status === "completed" || job.status === "failed") break;
       if (Date.now() >= deadline) {
         throw new Error(

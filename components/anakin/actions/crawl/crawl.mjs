@@ -6,6 +6,11 @@ export default {
   description: "Bulk-fetches markdown across a site — useful for catalog ingestion or building a site-wide RAG corpus. Submits a crawl job and polls until complete. [See the docs](https://anakin.io/docs/api-reference/crawl/submit-crawl-job).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: false,
+    openWorldHint: true,
+    readOnlyHint: true,
+  },
   props: {
     anakin,
     url: {
@@ -68,7 +73,7 @@ export default {
     maxWaitTime: {
       type: "integer",
       label: "Max Wait Time (seconds)",
-      description: "Maximum time to wait for the job to complete before failing the step.",
+      description: "Maximum time to wait for the job to complete before failing the step. Pipedream stops a workflow at its own timeout first (30s by default for HTTP triggers), so raise the workflow's **Timeout** in Settings for long jobs.",
       optional: true,
       default: 300,
     },
@@ -97,7 +102,10 @@ export default {
     const deadline = Date.now() + this.maxWaitTime * 1000;
     let job;
     do {
-      job = await this.anakin.getCrawlJob({ $, jobId });
+      job = await this.anakin.getCrawlJob({
+        $,
+        jobId,
+      });
       if (job.status === "completed" || job.status === "failed") break;
       if (Date.now() >= deadline) {
         throw new Error(

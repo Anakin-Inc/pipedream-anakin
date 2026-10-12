@@ -6,6 +6,11 @@ export default {
   description: "Asks multiple AI answer engines (ChatGPT, Gemini, Google AI Overview) the same question and compares their answers. Returns one result per engine — status, an answer summary, latency, credits used — plus an AI-generated synthesis of where the engines agree and diverge. Use for brand/AI-SEO visibility checks (\"what do AI engines say about X\"), answer comparison, and geo-specific AI answers. Submits a search and polls until it leaves the `running` state (a `failed` status can still carry per-source results, so it is returned rather than thrown). [See the docs](https://anakin.io/docs/api-reference/ai-visibility/submit-search).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: false,
+    openWorldHint: true,
+    readOnlyHint: true,
+  },
   props: {
     anakin,
     query: {
@@ -36,7 +41,7 @@ export default {
     maxWaitTime: {
       type: "integer",
       label: "Max Wait Time (seconds)",
-      description: "Maximum time to wait for the search to complete before failing the step.",
+      description: "Maximum time to wait for the search to complete before failing the step. Pipedream stops a workflow at its own timeout first (30s by default for HTTP triggers), so raise the workflow's **Timeout** in Settings for long jobs.",
       optional: true,
       default: 300,
     },
@@ -49,11 +54,16 @@ export default {
     },
   },
   async run({ $ }) {
-    const body = { query: this.query };
+    const body = {
+      query: this.query,
+    };
     if (this.sources && this.sources.length > 0) body.sources = this.sources;
     if (this.country) body.country = this.country;
 
-    let search = await this.anakin.submitAiVisibilitySearch({ $, ...body });
+    let search = await this.anakin.submitAiVisibilitySearch({
+      $,
+      ...body,
+    });
 
     const deadline = Date.now() + this.maxWaitTime * 1000;
     while (search.status === "running") {
@@ -63,12 +73,18 @@ export default {
         );
       }
       await new Promise((resolve) => setTimeout(resolve, this.pollInterval * 1000));
-      search = await this.anakin.getAiVisibilitySearch({ $, searchId: search.search_id });
+      search = await this.anakin.getAiVisibilitySearch({
+        $,
+        searchId: search.search_id,
+      });
     }
 
     const results = (search.results ?? []).map((r) => {
       if (this.includeFullContent) return r;
-      const { full_content, ...rest } = r;
+      const rest = {
+        ...r,
+      };
+      delete rest.full_content;
       return rest;
     });
 

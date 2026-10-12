@@ -6,6 +6,11 @@ export default {
   description: "Runs multi-source deep research: searches the web, scrapes the most relevant citations, and uses AI to structure the combined data into a unified answer. Use this when a single URL or a flat search result can't answer the question (comparative analysis, multi-jurisdictional research, market intelligence). Submits a research job and polls until complete. [See the docs](https://anakin.io/docs/api-reference/agentic-search/submit-search).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: false,
+    openWorldHint: true,
+    readOnlyHint: true,
+  },
   props: {
     anakin,
     prompt: {
@@ -29,7 +34,7 @@ export default {
     maxWaitTime: {
       type: "integer",
       label: "Max Wait Time (seconds)",
-      description: "Maximum time to wait for the job to complete before failing the step.",
+      description: "Maximum time to wait for the job to complete before failing the step. Pipedream stops a workflow at its own timeout first (30s by default for HTTP triggers), so raise the workflow's **Timeout** in Settings for long jobs.",
       optional: true,
       default: 300,
     },
@@ -44,18 +49,26 @@ export default {
   async run({ $ }) {
     const body = {
       prompt: this.prompt,
-      useBrowser: this.useBrowser === undefined ? true : this.useBrowser,
+      useBrowser: this.useBrowser === undefined
+        ? true
+        : this.useBrowser,
     };
     if (this.schema && Object.keys(this.schema).length > 0) {
       body.schema = this.schema;
     }
 
-    const { jobId } = await this.anakin.submitAgenticSearch({ $, ...body });
+    const { jobId } = await this.anakin.submitAgenticSearch({
+      $,
+      ...body,
+    });
 
     const deadline = Date.now() + this.maxWaitTime * 1000;
     let job;
     do {
-      job = await this.anakin.getAgenticSearchJob({ $, jobId });
+      job = await this.anakin.getAgenticSearchJob({
+        $,
+        jobId,
+      });
       if (job.status === "completed" || job.status === "failed") break;
       if (Date.now() >= deadline) {
         throw new Error(
