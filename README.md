@@ -8,10 +8,11 @@ browser sessions, and AI-driven browser automation.
 ```
 components/anakin/
   anakin.app.mjs        auth (X-API-Key) + one HTTP wrapper method per Anakin REST endpoint
-  actions/*/*.mjs        21 actions, one per Anakin capability — see SUBMIT.md for the full list
+  actions/*/*.mjs        22 actions, one per Anakin capability — see SUBMIT.md for the full list
+  package.json           @pipedream/anakin package manifest
 ```
 
-21 of 21 capabilities are covered (parity with the `anakin-mcp` tool
+22 of 22 capabilities are covered (parity with the `anakin-mcp` tool
 registry — `anakin-mcp/src/tools/*.ts`). Every action follows the same
 shape: submit → poll to completion for async jobs (`maxWaitTime` /
 `pollInterval` props control the wait), or a single request for synchronous

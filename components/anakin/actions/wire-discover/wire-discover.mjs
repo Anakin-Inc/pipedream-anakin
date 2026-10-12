@@ -6,6 +6,11 @@ export default {
   description: "Finds Wire actions for a task from a natural-language intent. Wire is Anakin's catalog of pre-built automation actions across hundreds of sites (Amazon, Walmart, LinkedIn, Airbnb, Zillow, and others) — some extract data (read), others perform interactions like submitting a form (write). Returns ranked candidate actions with their `action_id`, type, required/optional params, credit cost, and whether auth is needed. Run a returned action with the Run Wire Read Action or Run Wire Write Action step. [See the docs](https://anakin.io/docs/api-reference/wire/search-actions).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: false,
+    openWorldHint: false,
+    readOnlyHint: true,
+  },
   props: {
     anakin,
     q: {

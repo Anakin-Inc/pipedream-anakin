@@ -1,0 +1,18 @@
+{
+  "name": "@pipedream/anakin",
+  "version": "0.1.0",
+  "description": "Pipedream Anakin Components",
+  "main": "anakin.app.mjs",
+  "keywords": [
+    "pipedream",
+    "anakin"
+  ],
+  "homepage": "https://pipedream.com/apps/anakin",
+  "author": "Pipedream <support@pipedream.com> (https://pipedream.com/)",
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@pipedream/platform": "^3.1.1"
+  }
+}

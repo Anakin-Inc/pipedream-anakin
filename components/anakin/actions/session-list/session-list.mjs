@@ -6,6 +6,11 @@ export default {
   description: "Lists your saved browser sessions — encrypted login states captured via the Anakin dashboard or Browser API. Each session's ID is what you pass as Session ID to scrape/crawl, Create a Website Monitor, or Run AI Browser Task to work with login-protected pages. Optionally filter by the website domain the session belongs to. [See the docs](https://anakin.io/docs/api-reference/browser-sessions).",
   version: "0.0.1",
   type: "action",
+  annotations: {
+    destructiveHint: false,
+    openWorldHint: false,
+    readOnlyHint: true,
+  },
   props: {
     anakin,
     domain: {
@@ -16,9 +21,14 @@ export default {
     },
   },
   async run({ $ }) {
-    const result = await this.anakin.listSessions({ $, domain: this.domain });
+    const result = await this.anakin.listSessions({
+      $,
+      domain: this.domain,
+    });
 
-    $.export("$summary", `Fetched ${Array.isArray(result) ? result.length : (result.sessions?.length ?? 0)} browser session(s)`);
+    $.export("$summary", `Fetched ${Array.isArray(result)
+      ? result.length
+      : (result.sessions?.length ?? 0)} browser session(s)`);
     return result;
   },
 };
